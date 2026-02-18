@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Internal plan docs
+docs/plans/
