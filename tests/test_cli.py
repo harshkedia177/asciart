@@ -16,7 +16,7 @@ def _create_test_image(path: Path):
 def test_convert_basic():
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
         _create_test_image(Path(f.name))
-        result = runner.invoke(app, ["convert-cmd", f.name, "-w", "20", "--color", "none"])
+        result = runner.invoke(app, ["convert", f.name, "-w", "20", "--color", "none"])
         assert result.exit_code == 0
         lines = result.output.strip().split("\n")
         assert len(lines) > 0
@@ -28,7 +28,7 @@ def test_convert_save_to_file():
         _create_test_image(Path(img_f.name))
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as out_f:
             result = runner.invoke(
-                app, ["convert-cmd", img_f.name, "-w", "20", "--format", "text", "-o", out_f.name]
+                app, ["convert", img_f.name, "-w", "20", "--format", "text", "-o", out_f.name]
             )
             assert result.exit_code == 0
             content = Path(out_f.name).read_text()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asciart.models import ConvertOptions, Mode, ColorMode, DitherMode
+from asciart.models import ConvertOptions, Mode, ColorMode, DitherMode, MatchMode
 
 PRESETS: dict[str, ConvertOptions] = {
     "photo": ConvertOptions(
@@ -37,6 +37,15 @@ PRESETS: dict[str, ConvertOptions] = {
         edge_detection=True,
         color=ColorMode.NONE,
         contrast=1.8,
+    ),
+    "studio": ConvertOptions(
+        mode=Mode.ASCII,
+        match_mode=MatchMode.HYBRID,
+        clahe=True,
+        dither=DitherMode.ATKINSON,
+        color=ColorMode.TRUECOLOR,
+        contrast=1.1,
+        width=120,
     ),
 }
 

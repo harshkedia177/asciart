@@ -13,6 +13,11 @@ dependencies = [
     "textual-slider>=0.2.0",
 ]
 
+[project.optional-dependencies]
+gpu = ["cupy-cuda12x>=13.0"]
+jit = ["numba>=0.59"]
+all = ["cupy-cuda12x>=13.0", "numba>=0.59"]
+
 [project.scripts]
 asciart = "asciart.cli:app"
 

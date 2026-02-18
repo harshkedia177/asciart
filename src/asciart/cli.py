@@ -10,7 +10,7 @@ from typing import Optional
 import typer
 from PIL import Image
 
-from asciart.models import ConvertOptions, Mode, ColorMode, DitherMode, OutputFormat
+from asciart.models import ConvertOptions, Mode, ColorMode, DitherMode, MatchMode, OutputFormat
 from asciart.presets import get_preset
 from asciart.core.engine import convert
 from asciart.renderers.terminal import render_ansi
@@ -22,7 +22,7 @@ from asciart.renderers.image import render_png
 app = typer.Typer(name="asciart", help="Convert images to stunning ASCII art.")
 
 
-@app.command()
+@app.command(name="convert")
 def convert_cmd(
     image_path: Path = typer.Argument(..., help="Path to the image file", exists=True),
     width: int = typer.Option(80, "-w", "--width", help="Output width in characters"),
@@ -38,14 +38,34 @@ def convert_cmd(
     format: OutputFormat = typer.Option(OutputFormat.ANSI, "--format", help="Output format"),
     output: Optional[Path] = typer.Option(None, "-o", "--output", help="Save to file"),
     copy: bool = typer.Option(False, "--copy", help="Copy output to clipboard"),
+    match: MatchMode = typer.Option(MatchMode.BRIGHTNESS, "--match", help="Character matching mode"),
+    font_path: Optional[str] = typer.Option(None, "--font", help="Font path for structural/hybrid matching"),
+    clahe: bool = typer.Option(False, "--clahe", help="Enable CLAHE local contrast enhancement"),
+    backend_name: Optional[str] = typer.Option(None, "--backend", help="Force backend: numpy, numba, cupy"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show backend and timing info"),
 ):
     """Convert an image to ASCII art."""
+    # Force backend if requested
+    if backend_name:
+        from asciart.accel import force_backend
+        try:
+            force_backend(backend_name)
+        except ValueError as e:
+            typer.echo(str(e), err=True)
+            raise typer.Exit(code=1)
+
+    # Print backend info if verbose
+    if verbose:
+        from asciart.accel import get_backend
+        backend = get_backend()
+        typer.echo(f"Backend: {backend.name} (GPU={backend.has_gpu}, JIT={backend.has_jit})", err=True)
+
     img = Image.open(image_path)
 
     if preset:
         base = get_preset(preset)
         if base is None:
-            typer.echo(f"Unknown preset '{preset}'. Available: photo, logo, retro, hd, blocks, lineart", err=True)
+            typer.echo(f"Unknown preset '{preset}'. Available: photo, logo, retro, hd, blocks, lineart, studio", err=True)
             raise typer.Exit(code=1)
         # Apply CLI overrides on top of preset
         options = replace(base, width=width, font_ratio=font_ratio)
@@ -61,6 +81,9 @@ def convert_cmd(
             brightness=brightness,
             contrast=contrast,
             font_ratio=font_ratio,
+            match_mode=match,
+            font_path=font_path,
+            clahe=clahe,
         )
 
     # Handle GIF animation (before single-frame convert to avoid wasted work)
@@ -89,7 +112,12 @@ def convert_cmd(
             sys.stdout.write("\n")
         return
 
+    if verbose:
+        t0 = time.perf_counter()
     art = convert(img, options)
+    if verbose:
+        elapsed = (time.perf_counter() - t0) * 1000
+        typer.echo(f"Conversion: {elapsed:.0f}ms ({art.width}x{art.height} chars)", err=True)
 
     # Render based on format
     if format == OutputFormat.TEXT:

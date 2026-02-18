@@ -15,7 +15,7 @@ from textual.timer import Timer
 from textual_slider import Slider
 
 from asciart.core.engine import convert
-from asciart.models import ColorMode, ConvertOptions, DitherMode, Mode
+from asciart.models import ColorMode, ConvertOptions, DitherMode, MatchMode, Mode
 from asciart.presets import PRESETS
 from asciart.renderers.text import render_text
 from asciart.renderers.html import render_html
@@ -162,6 +162,17 @@ class AsciiArtApp(App):
                     id="color-select",
                 )
 
+                yield Label("Match Mode", classes="section-label")
+                yield Select(
+                    [(m.value, m.value) for m in MatchMode],
+                    value=MatchMode.BRIGHTNESS.value,
+                    id="match-select",
+                )
+
+                with Horizontal(classes="control-row"):
+                    yield Label("CLAHE")
+                    yield Switch(id="clahe-switch", value=False)
+
                 with Horizontal(classes="control-row"):
                     yield Label("Edge Detection")
                     yield Switch(id="edge-switch", value=False)
@@ -217,6 +228,8 @@ class AsciiArtApp(App):
             sharpness=self.query_one("#sharpness-slider", Slider).value / 100.0,
             font_ratio=self.query_one("#ratio-slider", Slider).value / 100.0,
             edge_detection=self.query_one("#edge-switch", Switch).value,
+            match_mode=MatchMode(self.query_one("#match-select", Select).value),
+            clahe=self.query_one("#clahe-switch", Switch).value,
         )
 
     def _refresh_preview(self) -> None:
@@ -228,7 +241,12 @@ class AsciiArtApp(App):
         rendered = render_text(art)
         elapsed = (time.perf_counter() - start) * 1000
         self.query_one("#preview", Static).update(rendered)
-        status = f"{art.width}x{art.height} chars | {self._options.mode.value} | {self._options.color.value} | {elapsed:.0f}ms"
+        from asciart.accel import get_backend
+        backend = get_backend()
+        status = (
+            f"{art.width}x{art.height} | {self._options.mode.value} "
+            f"| {self._options.match_mode.value} | {backend.name} | {elapsed:.0f}ms"
+        )
         self.query_one("#status-bar", Static).update(status)
 
     def _schedule_refresh(self) -> None:
@@ -278,6 +296,8 @@ class AsciiArtApp(App):
         self.query_one("#color-select", Select).value = preset.color.value
         self.query_one("#edge-switch", Switch).value = preset.edge_detection
         self.query_one("#invert-switch", Switch).value = preset.invert
+        self.query_one("#match-select", Select).value = preset.match_mode.value
+        self.query_one("#clahe-switch", Switch).value = preset.clahe
         self._schedule_refresh()
 
     def _save_export(self, fmt: str) -> None:
