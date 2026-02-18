@@ -1,4 +1,3 @@
-# tests/test_edges.py
 import numpy as np
 from asciart.core.edges import detect_edges
 

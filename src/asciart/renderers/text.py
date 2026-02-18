@@ -1,4 +1,3 @@
-# src/asciart/renderers/text.py
 from __future__ import annotations
 from asciart.models import AsciiArt
 

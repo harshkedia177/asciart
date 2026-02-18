@@ -1,4 +1,3 @@
-# src/asciart/core/glyph_cache.py
 from __future__ import annotations
 
 from dataclasses import dataclass

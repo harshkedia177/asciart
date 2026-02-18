@@ -1,4 +1,3 @@
-# tests/test_dither_new.py
 import numpy as np
 from asciart.core.dither import (
     atkinson,
@@ -7,8 +6,6 @@ from asciart.core.dither import (
     BAYER_8X8,
 )
 
-
-# --- Atkinson tests ---
 
 def test_atkinson_returns_same_shape():
     img = np.random.rand(10, 20) * 255
@@ -34,8 +31,6 @@ def test_atkinson_preserves_highlights():
     assert result.mean() > 200, f"Mean was {result.mean()}, expected > 200"
 
 
-# --- Blue noise tests ---
-
 def test_blue_noise_returns_same_shape():
     img = np.random.rand(10, 20) * 255
     result = blue_noise_dither(img, num_levels=4)
@@ -60,13 +55,9 @@ def test_blue_noise_output_is_quantized():
     )
 
 
-# --- Bayer 8x8 tests ---
-
 def test_bayer_8x8_exists_and_correct_shape():
     assert BAYER_8X8.shape == (8, 8)
 
-
-# --- Backward compat: ordered_dither still works ---
 
 def test_ordered_dither_still_works():
     img = np.random.rand(16, 16) * 255

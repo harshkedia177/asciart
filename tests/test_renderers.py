@@ -1,4 +1,3 @@
-# tests/test_renderers.py
 from asciart.models import AsciiArt, Cell
 from asciart.renderers.terminal import render_ansi
 from asciart.renderers.text import render_text

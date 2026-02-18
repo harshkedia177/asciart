@@ -1,4 +1,3 @@
-# src/asciart/core/color_space.py
 """CIELAB color space utilities for perceptual ANSI-256 color matching."""
 from __future__ import annotations
 

@@ -1,4 +1,3 @@
-# tests/test_model_arrays.py
 """Tests for numpy array-based AsciiArt construction and backward compatibility."""
 
 import numpy as np
@@ -11,10 +10,6 @@ from asciart.models import (
     MatchMode,
 )
 
-
-# ---------------------------------------------------------------------------
-# New enum values
-# ---------------------------------------------------------------------------
 
 
 class TestMatchMode:
@@ -40,10 +35,6 @@ class TestDitherModeExtensions:
         assert DitherMode.FLOYD_STEINBERG == "floyd-steinberg"
         assert DitherMode.ORDERED == "ordered"
 
-
-# ---------------------------------------------------------------------------
-# ConvertOptions new fields
-# ---------------------------------------------------------------------------
 
 
 class TestConvertOptionsNewFields:
@@ -78,10 +69,6 @@ class TestConvertOptionsNewFields:
         assert opts.dither == DitherMode.NONE
         assert opts.contrast == 1.0
 
-
-# ---------------------------------------------------------------------------
-# AsciiArt.from_arrays()
-# ---------------------------------------------------------------------------
 
 
 class TestFromArrays:
@@ -122,10 +109,6 @@ class TestFromArrays:
         assert art.width == 10
         assert art.height == 5
 
-
-# ---------------------------------------------------------------------------
-# cells property -- reconstruction from arrays
-# ---------------------------------------------------------------------------
 
 
 class TestCellsPropertyFromArrays:
@@ -196,10 +179,6 @@ class TestCellsPropertyFromArrays:
         assert chars == [" ", "@", "@", " "]
 
 
-# ---------------------------------------------------------------------------
-# Legacy construction backward compatibility
-# ---------------------------------------------------------------------------
-
 
 class TestLegacyConstruction:
     def test_basic_legacy(self):
@@ -240,10 +219,6 @@ class TestLegacyConstruction:
         assert len(art.cells) == 2
         assert len(art.cells[0]) == 1
 
-
-# ---------------------------------------------------------------------------
-# Repr and equality
-# ---------------------------------------------------------------------------
 
 
 class TestReprAndEquality:

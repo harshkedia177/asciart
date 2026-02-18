@@ -1,4 +1,3 @@
-# src/asciart/core/edges.py
 from __future__ import annotations
 import numpy as np
 from scipy.signal import convolve2d
@@ -14,15 +13,3 @@ def detect_edges(gray: np.ndarray, threshold: float = 50.0) -> tuple[np.ndarray,
     angles = np.arctan2(gy, gx)
     mask = magnitude > threshold
     return mask, angles
-
-
-def angle_to_char(angle: float) -> str:
-    a = angle % np.pi
-    if a < np.pi / 8 or a > 7 * np.pi / 8:
-        return "-"
-    elif a < 3 * np.pi / 8:
-        return "/"
-    elif a < 5 * np.pi / 8:
-        return "|"
-    else:
-        return "\\"

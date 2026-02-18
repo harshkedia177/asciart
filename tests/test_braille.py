@@ -1,4 +1,3 @@
-# tests/test_braille.py
 from PIL import Image
 from asciart.core.engine import convert
 from asciart.models import ConvertOptions, Mode, ColorMode

@@ -1,4 +1,3 @@
-# tests/test_engine.py
 from asciart.core.engine import convert
 from asciart.models import ConvertOptions, ColorMode, AsciiArt
 

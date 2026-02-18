@@ -1,4 +1,3 @@
-# src/asciart/renderers/image.py
 from __future__ import annotations
 import io
 from PIL import Image, ImageDraw, ImageFont

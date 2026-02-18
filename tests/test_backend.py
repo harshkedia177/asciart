@@ -4,10 +4,6 @@ import pytest
 
 from asciart.accel.backend import Backend, detect_backend, force_backend, get_backend
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture(autouse=True)
 def _reset_singleton():
@@ -16,10 +12,6 @@ def _reset_singleton():
     yield
     force_backend("numpy")
 
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
 
 
 def test_detect_backend_returns_backend():

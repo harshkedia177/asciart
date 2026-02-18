@@ -1,4 +1,3 @@
-# tests/test_contrast.py
 import numpy as np
 
 from asciart.core.contrast import apply_clahe

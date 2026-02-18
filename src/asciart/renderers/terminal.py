@@ -1,4 +1,3 @@
-# src/asciart/renderers/terminal.py
 from __future__ import annotations
 from asciart.core.color_space import nearest_ansi256_perceptual
 from asciart.models import AsciiArt
@@ -12,23 +11,6 @@ def _truecolor_fg(r: int, g: int, b: int) -> str:
 
 def _truecolor_bg(r: int, g: int, b: int) -> str:
     return f"\033[48;2;{r};{g};{b}m"
-
-
-def _ansi256_fg(r: int, g: int, b: int) -> str:
-    """Map RGB to nearest xterm-256 color."""
-    if abs(r - g) < 10 and abs(g - b) < 10:
-        if r < 8:
-            idx = 16
-        elif r > 248:
-            idx = 231
-        else:
-            idx = round((r - 8) / 247 * 24) + 232
-    else:
-        ri = round(r / 255 * 5)
-        gi = round(g / 255 * 5)
-        bi = round(b / 255 * 5)
-        idx = 16 + 36 * ri + 6 * gi + bi
-    return f"\033[38;5;{idx}m"
 
 
 def _ansi256_fg_perceptual(r: int, g: int, b: int) -> str:

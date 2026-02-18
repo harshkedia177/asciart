@@ -1,4 +1,3 @@
-# src/asciart/core/engine.py
 from __future__ import annotations
 
 import numpy as np
@@ -15,19 +14,12 @@ from asciart.core.edges import detect_edges
 
 def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
     """Main conversion pipeline: Image + Options -> AsciiArt grid."""
-    # Detect compute backend (numpy, numba, or cupy)
     backend = get_backend()
     xp = backend.xp
 
-    # 1. Preprocess
     img = preprocess(image, options.brightness, options.contrast, options.saturation, options.sharpness)
+    need_color = options.color != ColorMode.NONE
 
-    # 2. Determine if we need color
-    need_color = options.color not in (ColorMode.NONE,)
-    if options.color == ColorMode.AUTO:
-        need_color = True
-
-    # 3. Mode-specific sizing and mapping
     if options.mode == Mode.BRAILLE:
         # Braille: each char = 2x4 pixels, so resize to 2x width and ~4x height
         target_w = options.width * 2
@@ -87,12 +79,10 @@ def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
             if colors is not None:
                 colors = xp.asnumpy(colors)
 
-        # Apply CLAHE if requested
         if options.clahe:
             from asciart.core.contrast import apply_clahe
             gray = apply_clahe(gray)
 
-        # Save pre-dither grayscale for edge detection
         gray_for_edges = gray.copy() if options.edge_detection else None
 
         if options.mode == Mode.BLOCKS:
@@ -140,7 +130,6 @@ def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
 
             return AsciiArt.from_arrays(char_indices, char_map, fg_array=fg)
 
-        # Dithering
         if options.dither == DitherMode.FLOYD_STEINBERG:
             gray = floyd_steinberg(gray, len(chars))
         elif options.dither == DitherMode.ORDERED:
@@ -152,19 +141,11 @@ def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
 
         char_indices, char_map, fg = map_brightness(gray, chars, options.invert, colors)
 
-        # Edge detection overlay on pre-dither grayscale
-        if options.edge_detection and gray_for_edges is not None:
+        if options.edge_detection:
             edge_mask, edge_angles = detect_edges(gray_for_edges, options.edge_threshold)
 
-            # Vectorized angle_to_char: classify angles into edge chars
             a = edge_angles % np.pi
-            # Classify angles into edge character indices
-            # Classify: "-" for a < pi/8 or a > 7*pi/8
-            #           "/" for pi/8 <= a < 3*pi/8
-            #           "|" for 3*pi/8 <= a < 5*pi/8
-            #           "\" for 5*pi/8 <= a <= 7*pi/8
             edge_chars = "-/|\\"
-            # Build the extended char_map: original ramp + edge chars (deduped)
             extended_map = char_map
             edge_index_map = {}
             for ec in edge_chars:
@@ -175,13 +156,11 @@ def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
                 else:
                     edge_index_map[ec] = pos
 
-            # Create index arrays for each edge char classification
             idx_dash = np.uint8(edge_index_map["-"])
             idx_slash = np.uint8(edge_index_map["/"])
             idx_pipe = np.uint8(edge_index_map["|"])
             idx_bslash = np.uint8(edge_index_map["\\"])
 
-            # Vectorized classification using numpy where chains
             edge_indices = np.where(
                 (a < np.pi / 8) | (a > 7 * np.pi / 8),
                 idx_dash,
@@ -196,7 +175,6 @@ def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
                 ),
             ).astype(np.uint8)
 
-            # Apply edge overlay: where edge_mask is True, replace char_indices
             char_indices = np.where(edge_mask, edge_indices, char_indices).astype(np.uint8)
             char_map = extended_map
 

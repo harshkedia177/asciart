@@ -1,4 +1,3 @@
-# tests/test_export.py
 from asciart.models import AsciiArt, Cell
 from asciart.renderers.html import render_html
 from asciart.renderers.svg import render_svg

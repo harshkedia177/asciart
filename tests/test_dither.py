@@ -1,4 +1,3 @@
-# tests/test_dither.py
 import numpy as np
 from asciart.core.dither import floyd_steinberg, ordered_dither
 

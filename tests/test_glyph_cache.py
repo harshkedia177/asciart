@@ -1,4 +1,3 @@
-# tests/test_glyph_cache.py
 import numpy as np
 import pytest
 

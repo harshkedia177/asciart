@@ -67,9 +67,6 @@ def detect_backend() -> Backend:
     return _make_numpy_backend()
 
 
-# ---------------------------------------------------------------------------
-# Singleton cache
-# ---------------------------------------------------------------------------
 _backend: Backend | None = None
 
 
@@ -106,16 +103,11 @@ def force_backend(name: str) -> Backend:
             f"Unknown backend {name!r}. Must be one of {_VALID_BACKENDS}"
         )
 
-    builders = {
-        "cupy": _probe_cupy,
-        "numba": _probe_numba,
-        "numpy": _make_numpy_backend,
-    }
-
     if name == "numpy":
         _backend = _make_numpy_backend()
     else:
-        result = builders[name]()
+        probe = {"cupy": _probe_cupy, "numba": _probe_numba}[name]
+        result = probe()
         if result is None:
             raise ValueError(
                 f"Backend {name!r} requested but is not available on this system"

@@ -1,4 +1,3 @@
-# tests/test_color_space.py
 """Tests for CIELAB color space utilities and perceptual ANSI-256 matching."""
 from __future__ import annotations
 

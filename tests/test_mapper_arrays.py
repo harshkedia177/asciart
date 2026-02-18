@@ -1,14 +1,9 @@
-# tests/test_mapper_arrays.py
 """Tests for vectorized mapper functions returning numpy arrays."""
 
 import numpy as np
 
 from asciart.core.mapper import map_brightness, map_braille, map_halfblock
 
-
-# ---------------------------------------------------------------------------
-# map_brightness
-# ---------------------------------------------------------------------------
 
 
 class TestMapBrightnessShapesAndDtypes:
@@ -110,10 +105,6 @@ class TestMapBrightnessColors:
         np.testing.assert_array_equal(fg[1, 1], [128, 128, 128])
 
 
-# ---------------------------------------------------------------------------
-# map_braille
-# ---------------------------------------------------------------------------
-
 
 class TestMapBrailleShapesAndDtypes:
     def test_returns_tuple_of_three(self):
@@ -198,10 +189,6 @@ class TestMapBrailleMappingCorrectness:
         assert char_indices[0, 0] == 0x47
 
 
-# ---------------------------------------------------------------------------
-# map_halfblock
-# ---------------------------------------------------------------------------
-
 
 class TestMapHalfblockShapesAndDtypes:
     def test_returns_tuple_of_four(self):
@@ -262,10 +249,6 @@ class TestMapHalfblockColorCorrectness:
         np.testing.assert_array_equal(fg[1, 0], [0, 255, 0])
         np.testing.assert_array_equal(bg[1, 0], [255, 255, 255])
 
-
-# ---------------------------------------------------------------------------
-# Zero Python loops verification (structural)
-# ---------------------------------------------------------------------------
 
 
 class TestNoLoopsVerification:

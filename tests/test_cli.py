@@ -1,4 +1,3 @@
-# tests/test_cli.py
 from typer.testing import CliRunner
 from asciart.cli import app
 from PIL import Image

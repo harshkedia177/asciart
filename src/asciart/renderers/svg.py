@@ -1,4 +1,3 @@
-# src/asciart/renderers/svg.py
 from __future__ import annotations
 from html import escape
 from asciart.models import AsciiArt

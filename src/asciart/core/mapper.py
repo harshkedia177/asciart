@@ -1,4 +1,3 @@
-# src/asciart/core/mapper.py
 from __future__ import annotations
 
 import numpy as np
