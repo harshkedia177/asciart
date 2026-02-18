@@ -27,15 +27,6 @@ def preprocess(image: Image.Image, brightness: float, contrast: float, saturatio
     return img
 
 
-def resize(image: Image.Image, width: int, height: int | None, font_ratio: float) -> Image.Image:
-    """Resize image to target character dimensions with aspect ratio correction."""
-    img_w, img_h = image.size
-    if height is None:
-        height = int((img_h / img_w) * width * font_ratio)
-        height = max(1, height)
-    return image.resize((width, height), Image.LANCZOS)
-
-
 def resize_with_edge_preservation(
     image: Image.Image,
     width: int,

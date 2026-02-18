@@ -9,16 +9,25 @@ BG_COLOR = (30, 30, 30)
 DEFAULT_FG = (204, 204, 204)
 
 
-def _render_png_arrays(art: AsciiArt) -> bytes:
-    """Fast path: read directly from arrays."""
-    img_w = art.width * CHAR_WIDTH
-    img_h = art.height * CHAR_HEIGHT
-    img = Image.new("RGB", (img_w, img_h), BG_COLOR)
-    draw = ImageDraw.Draw(img)
+def _load_font() -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     try:
-        font = ImageFont.truetype("Courier", CHAR_HEIGHT)
+        return ImageFont.truetype("Courier", CHAR_HEIGHT)
     except (OSError, IOError):
-        font = ImageFont.load_default()
+        return ImageFont.load_default()
+
+
+def _create_canvas(art: AsciiArt) -> tuple[Image.Image, ImageDraw.ImageDraw]:
+    img = Image.new("RGB", (art.width * CHAR_WIDTH, art.height * CHAR_HEIGHT), BG_COLOR)
+    return img, ImageDraw.Draw(img)
+
+
+def _image_to_png(img: Image.Image) -> bytes:
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _draw_arrays(draw: ImageDraw.ImageDraw, art: AsciiArt, font: ImageFont.FreeTypeFont | ImageFont.ImageFont) -> None:
     char_array = art.char_array
     char_map = art.char_map or ""
     map_len = len(char_map)
@@ -38,23 +47,9 @@ def _render_png_arrays(art: AsciiArt) -> bytes:
             else:
                 fg = DEFAULT_FG
             draw.text((px, py), char, fill=fg, font=font)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
 
 
-def render_png(art: AsciiArt) -> bytes:
-    if art.char_array is not None:
-        return _render_png_arrays(art)
-    # Legacy fallback
-    img_w = art.width * CHAR_WIDTH
-    img_h = art.height * CHAR_HEIGHT
-    img = Image.new("RGB", (img_w, img_h), BG_COLOR)
-    draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("Courier", CHAR_HEIGHT)
-    except (OSError, IOError):
-        font = ImageFont.load_default()
+def _draw_cells(draw: ImageDraw.ImageDraw, art: AsciiArt, font: ImageFont.FreeTypeFont | ImageFont.ImageFont) -> None:
     for y, row in enumerate(art.cells):
         for x, cell in enumerate(row):
             fg = cell.fg if cell.fg else DEFAULT_FG
@@ -63,6 +58,13 @@ def render_png(art: AsciiArt) -> bytes:
             if cell.bg:
                 draw.rectangle([px, py, px + CHAR_WIDTH, py + CHAR_HEIGHT], fill=cell.bg)
             draw.text((px, py), cell.char, fill=fg, font=font)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+
+
+def render_png(art: AsciiArt) -> bytes:
+    img, draw = _create_canvas(art)
+    font = _load_font()
+    if art.char_array is not None:
+        _draw_arrays(draw, art, font)
+    else:
+        _draw_cells(draw, art, font)
+    return _image_to_png(img)

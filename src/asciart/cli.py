@@ -44,7 +44,6 @@ def convert_cmd(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show backend and timing info"),
 ):
     """Convert an image to ASCII art."""
-    # Force backend if requested
     if backend_name:
         from asciart.accel import force_backend
         try:
@@ -53,7 +52,6 @@ def convert_cmd(
             typer.echo(str(e), err=True)
             raise typer.Exit(code=1)
 
-    # Print backend info if verbose
     if verbose:
         from asciart.accel import get_backend
         backend = get_backend()
@@ -66,7 +64,6 @@ def convert_cmd(
         if base is None:
             typer.echo(f"Unknown preset '{preset}'. Available: photo, logo, retro, hd, blocks, lineart, studio", err=True)
             raise typer.Exit(code=1)
-        # Apply CLI overrides on top of preset
         options = replace(base, width=width, font_ratio=font_ratio)
         if invert:
             options = replace(options, invert=True)
@@ -85,14 +82,12 @@ def convert_cmd(
             clahe=clahe,
         )
 
-    # Handle GIF animation (before single-frame convert to avoid wasted work)
     if animate and str(image_path).lower().endswith(".gif"):
         from asciart.core.gif import extract_frames
         frames_pil, durations = extract_frames(str(image_path))
         arts = [convert(f, options) for f in frames_pil]
 
-        # Hide cursor
-        sys.stdout.write("\033[?25l")
+        sys.stdout.write("\033[?25l")  # hide cursor
         try:
             while True:
                 for art_frame, duration in zip(arts, durations):
@@ -100,7 +95,7 @@ def convert_cmd(
                         rendered = render_ansi(art_frame, use_256=(color == ColorMode.ANSI256))
                     else:
                         rendered = render_text(art_frame)
-                    sys.stdout.write("\033[H")  # cursor home
+                    sys.stdout.write("\033[H")
                     sys.stdout.write(rendered)
                     sys.stdout.flush()
                     time.sleep(duration / 1000.0)
@@ -118,7 +113,6 @@ def convert_cmd(
         elapsed = (time.perf_counter() - t0) * 1000
         typer.echo(f"Conversion: {elapsed:.0f}ms ({art.width}x{art.height} chars)", err=True)
 
-    # Render based on format
     if format == OutputFormat.TEXT:
         rendered = render_text(art)
     elif format == OutputFormat.ANSI:

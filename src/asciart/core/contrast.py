@@ -21,50 +21,46 @@ def apply_clahe(
         Enhanced grayscale array, same shape, values 0-255
     """
     h, w = gray.shape
-    # Clamp to valid range and convert to uint8 for histogram binning
     clamped = np.clip(gray, 0.0, 255.0)
 
-    # Compute tile boundaries
     tile_h = h / grid_size
     tile_w = w / grid_size
+    bounds = _tile_bounds(grid_size, tile_h, tile_w, h, w)
 
     # Build a CDF lookup for each tile
-    # cdfs shape: (grid_size, grid_size, 256)
     cdfs = np.zeros((grid_size, grid_size, 256), dtype=np.float64)
-
     for ty in range(grid_size):
-        y0 = int(round(ty * tile_h))
-        y1 = int(round((ty + 1) * tile_h))
-        y1 = max(y1, y0 + 1)  # ensure at least 1 row
-        y1 = min(y1, h)
         for tx in range(grid_size):
-            x0 = int(round(tx * tile_w))
-            x1 = int(round((tx + 1) * tile_w))
-            x1 = max(x1, x0 + 1)  # ensure at least 1 col
-            x1 = min(x1, w)
-
-            tile = clamped[y0:y1, x0:x1]
-            cdfs[ty, tx] = _tile_cdf(tile, clip_limit)
+            y0, y1, x0, x1 = bounds[ty][tx]
+            cdfs[ty, tx] = _tile_cdf(clamped[y0:y1, x0:x1], clip_limit)
 
     # Map each pixel through its tile's CDF
     result = np.empty_like(gray, dtype=np.float64)
     pixel_vals = np.clip(np.round(clamped), 0, 255).astype(np.intp)
 
     for ty in range(grid_size):
-        y0 = int(round(ty * tile_h))
-        y1 = int(round((ty + 1) * tile_h))
-        y1 = max(y1, y0 + 1)
-        y1 = min(y1, h)
         for tx in range(grid_size):
-            x0 = int(round(tx * tile_w))
-            x1 = int(round((tx + 1) * tile_w))
-            x1 = max(x1, x0 + 1)
-            x1 = min(x1, w)
-
-            tile_indices = pixel_vals[y0:y1, x0:x1]
-            result[y0:y1, x0:x1] = cdfs[ty, tx][tile_indices]
+            y0, y1, x0, x1 = bounds[ty][tx]
+            result[y0:y1, x0:x1] = cdfs[ty, tx][pixel_vals[y0:y1, x0:x1]]
 
     return result
+
+
+def _tile_bounds(
+    grid_size: int, tile_h: float, tile_w: float, h: int, w: int,
+) -> list[list[tuple[int, int, int, int]]]:
+    """Compute (y0, y1, x0, x1) bounds for each tile in the grid."""
+    bounds: list[list[tuple[int, int, int, int]]] = []
+    for ty in range(grid_size):
+        row: list[tuple[int, int, int, int]] = []
+        y0 = int(round(ty * tile_h))
+        y1 = min(max(int(round((ty + 1) * tile_h)), y0 + 1), h)
+        for tx in range(grid_size):
+            x0 = int(round(tx * tile_w))
+            x1 = min(max(int(round((tx + 1) * tile_w)), x0 + 1), w)
+            row.append((y0, y1, x0, x1))
+        bounds.append(row)
+    return bounds
 
 
 def _tile_cdf(tile: np.ndarray, clip_limit: float) -> np.ndarray:
@@ -72,7 +68,6 @@ def _tile_cdf(tile: np.ndarray, clip_limit: float) -> np.ndarray:
 
     Returns a 256-element lookup table mapping pixel value -> equalized value.
     """
-    # Flatten and compute histogram
     flat = np.clip(np.round(tile.ravel()), 0, 255).astype(np.intp)
     hist = np.bincount(flat, minlength=256).astype(np.float64)
 
@@ -80,29 +75,16 @@ def _tile_cdf(tile: np.ndarray, clip_limit: float) -> np.ndarray:
     if n_pixels == 0:
         return np.arange(256, dtype=np.float64)
 
-    # Clip histogram
-    mean_count = n_pixels / 256.0
-    limit = clip_limit * mean_count
+    # Clip histogram and redistribute excess evenly
+    limit = clip_limit * (n_pixels / 256.0)
+    over = np.maximum(hist - limit, 0.0)
+    hist = np.minimum(hist, limit) + over.sum() / 256.0
 
-    excess = 0.0
-    for i in range(256):
-        if hist[i] > limit:
-            excess += hist[i] - limit
-            hist[i] = limit
-
-    # Redistribute excess evenly
-    redistribute = excess / 256.0
-    hist += redistribute
-
-    # Compute CDF
+    # Compute and normalize CDF to 0-255
     cdf = np.cumsum(hist)
-
-    # Normalize CDF to 0-255
     cdf_min = cdf[cdf > 0].min() if np.any(cdf > 0) else 0.0
-    cdf_max = cdf[-1]
-    denom = cdf_max - cdf_min
+    denom = cdf[-1] - cdf_min
     if denom == 0:
         return np.arange(256, dtype=np.float64)
 
-    normalized = (cdf - cdf_min) / denom * 255.0
-    return np.clip(normalized, 0.0, 255.0)
+    return np.clip((cdf - cdf_min) / denom * 255.0, 0.0, 255.0)

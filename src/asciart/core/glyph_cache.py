@@ -131,6 +131,12 @@ class GlyphMatcher:
         response = convolve2d(bitmap, laplacian_kernel, mode="same", boundary="fill")
         return float(np.mean(response ** 2))
 
+    @staticmethod
+    def _normalize(arr: np.ndarray) -> np.ndarray:
+        """Normalize array to [0, 1] range. Returns unchanged if max is 0."""
+        m = arr.max()
+        return arr / m if m > 0 else arr
+
     def match_tile(self, tile: np.ndarray, mode: str = "structural") -> int:
         """Match a single (cell_h, cell_w) tile to the best glyph index.
 
@@ -142,44 +148,66 @@ class GlyphMatcher:
             Index into self.chars of the best-matching glyph.
         """
         tile_mean = float(tile.mean())
-        tile_features = self._extract_features(tile)
-        tile_variance = float(tile.var())
-        tile_frequency = self._spatial_frequency(tile)
 
         if mode == "brightness":
             diffs = np.abs(self.brightness_array - tile_mean)
             return int(np.argmin(diffs))
 
-        elif mode == "structural":
-            # Sum of squared differences on feature vectors
+        tile_features = self._extract_features(tile)
+
+        if mode == "structural":
             ssd = np.sum((self.feature_matrix - tile_features) ** 2, axis=1)
             return int(np.argmin(ssd))
 
-        else:  # hybrid
-            # Normalize each component to [0, 1] range for fair weighting
-            brightness_diff = np.abs(self.brightness_array - tile_mean)
-            b_max = brightness_diff.max()
-            brightness_score = brightness_diff / b_max if b_max > 0 else brightness_diff
+        # hybrid
+        combined = self._hybrid_score(
+            tile_means=tile_mean,
+            tile_features=tile_features,
+            tile_variances=float(tile.var()),
+            tile_freqs=self._spatial_frequency(tile),
+        )
+        return int(np.argmin(combined))
 
-            ssd = np.sum((self.feature_matrix - tile_features) ** 2, axis=1)
-            s_max = ssd.max()
-            structure_score = ssd / s_max if s_max > 0 else ssd
+    def _hybrid_score(
+        self,
+        tile_means: float | np.ndarray,
+        tile_features: np.ndarray,
+        tile_variances: float | np.ndarray,
+        tile_freqs: float | np.ndarray,
+    ) -> np.ndarray:
+        """Compute weighted hybrid similarity scores.
 
-            variance_diff = np.abs(self.variance_array - tile_variance)
-            v_max = variance_diff.max()
-            variance_score = variance_diff / v_max if v_max > 0 else variance_diff
+        Works for both single tiles (scalars) and batches (arrays with newaxis).
+        Returns shape (N_glyphs,) for single tile or (n_tiles, N_glyphs) for batch.
+        """
+        norm = self._normalize
 
-            frequency_diff = np.abs(self.frequency_array - tile_frequency)
-            f_max = frequency_diff.max()
-            frequency_score = frequency_diff / f_max if f_max > 0 else frequency_diff
-
-            combined = (
-                0.25 * brightness_score
-                + 0.50 * structure_score
-                + 0.15 * variance_score
-                + 0.10 * frequency_score
+        if isinstance(tile_means, np.ndarray):
+            brightness_diff = np.abs(
+                tile_means[:, np.newaxis] - self.brightness_array[np.newaxis, :]
             )
-            return int(np.argmin(combined))
+            ssd = np.sum(
+                (tile_features[:, np.newaxis, :] - self.feature_matrix[np.newaxis, :, :]) ** 2,
+                axis=2,
+            )
+            variance_diff = np.abs(
+                tile_variances[:, np.newaxis] - self.variance_array[np.newaxis, :]
+            )
+            frequency_diff = np.abs(
+                tile_freqs[:, np.newaxis] - self.frequency_array[np.newaxis, :]
+            )
+        else:
+            brightness_diff = np.abs(self.brightness_array - tile_means)
+            ssd = np.sum((self.feature_matrix - tile_features) ** 2, axis=1)
+            variance_diff = np.abs(self.variance_array - tile_variances)
+            frequency_diff = np.abs(self.frequency_array - tile_freqs)
+
+        return (
+            0.25 * norm(brightness_diff)
+            + 0.50 * norm(ssd)
+            + 0.15 * norm(variance_diff)
+            + 0.10 * norm(frequency_diff)
+        )
 
     def match_tiles_batch(
         self, tiles: np.ndarray, mode: str = "structural"
@@ -194,80 +222,37 @@ class GlyphMatcher:
             (grid_h, grid_w) uint8 array of glyph indices.
         """
         gh, gw = tiles.shape[:2]
-        result = np.zeros((gh, gw), dtype=np.uint8)
 
         if mode == "brightness":
-            # Fully vectorized brightness matching
-            tile_means = tiles.mean(axis=(2, 3))  # (gh, gw)
-            flat_means = tile_means.reshape(-1)  # (gh * gw,)
-            # Broadcast: (gh*gw, 1) vs (N,) -> (gh*gw, N)
-            diffs = np.abs(flat_means[:, np.newaxis] - self.brightness_array[np.newaxis, :])
+            tile_means = tiles.mean(axis=(2, 3)).reshape(-1)
+            diffs = np.abs(tile_means[:, np.newaxis] - self.brightness_array[np.newaxis, :])
             flat_indices = np.argmin(diffs, axis=1).astype(np.uint8)
-            result = flat_indices.reshape(gh, gw)
+            return flat_indices.reshape(gh, gw)
 
-        elif mode == "structural":
-            # Extract features for all tiles at once
-            tile_features = self._extract_features_batch(tiles)  # (gh*gw, F)
-            # SSD: (gh*gw, 1, F) - (1, N, F) -> sum over F -> (gh*gw, N)
+        tile_features = self._extract_features_batch(tiles)
+
+        if mode == "structural":
             ssd = np.sum(
                 (tile_features[:, np.newaxis, :] - self.feature_matrix[np.newaxis, :, :]) ** 2,
                 axis=2,
             )
             flat_indices = np.argmin(ssd, axis=1).astype(np.uint8)
-            result = flat_indices.reshape(gh, gw)
+            return flat_indices.reshape(gh, gw)
 
-        else:  # hybrid
-            tile_features = self._extract_features_batch(tiles)
-            tile_means = tiles.mean(axis=(2, 3)).reshape(-1)
-            tile_variances = tiles.var(axis=(2, 3)).reshape(-1)
-
-            # Compute tile frequencies
-            n_tiles = gh * gw
-            flat_tiles = tiles.reshape(n_tiles, tiles.shape[2], tiles.shape[3])
-            tile_freqs = np.array(
+        # hybrid
+        n_tiles = gh * gw
+        flat_tiles = tiles.reshape(n_tiles, tiles.shape[2], tiles.shape[3])
+        combined = self._hybrid_score(
+            tile_means=tiles.mean(axis=(2, 3)).reshape(-1),
+            tile_features=tile_features,
+            tile_variances=tiles.var(axis=(2, 3)).reshape(-1),
+            tile_freqs=np.array(
                 [self._spatial_frequency(flat_tiles[i]) for i in range(n_tiles)],
                 dtype=np.float64,
-            )
-
-            # Brightness component
-            brightness_diff = np.abs(
-                tile_means[:, np.newaxis] - self.brightness_array[np.newaxis, :]
-            )
-            b_max = brightness_diff.max()
-            brightness_score = brightness_diff / b_max if b_max > 0 else brightness_diff
-
-            # Structure component
-            ssd = np.sum(
-                (tile_features[:, np.newaxis, :] - self.feature_matrix[np.newaxis, :, :]) ** 2,
-                axis=2,
-            )
-            s_max = ssd.max()
-            structure_score = ssd / s_max if s_max > 0 else ssd
-
-            # Variance component
-            variance_diff = np.abs(
-                tile_variances[:, np.newaxis] - self.variance_array[np.newaxis, :]
-            )
-            v_max = variance_diff.max()
-            variance_score = variance_diff / v_max if v_max > 0 else variance_diff
-
-            # Frequency component
-            frequency_diff = np.abs(
-                tile_freqs[:, np.newaxis] - self.frequency_array[np.newaxis, :]
-            )
-            f_max = frequency_diff.max()
-            frequency_score = frequency_diff / f_max if f_max > 0 else frequency_diff
-
-            combined = (
-                0.25 * brightness_score
-                + 0.50 * structure_score
-                + 0.15 * variance_score
-                + 0.10 * frequency_score
-            )
-            flat_indices = np.argmin(combined, axis=1).astype(np.uint8)
-            result = flat_indices.reshape(gh, gw)
-
-        return result
+            ),
+        )
+        flat_indices = np.argmin(combined, axis=1).astype(np.uint8)
+        return flat_indices.reshape(gh, gw)
 
     def _extract_features_batch(self, tiles: np.ndarray) -> np.ndarray:
         """Extract features for a batch of tiles.

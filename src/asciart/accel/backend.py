@@ -6,6 +6,8 @@ import importlib
 from dataclasses import dataclass
 from types import ModuleType
 
+import numpy as np
+
 _VALID_BACKENDS = ("cupy", "numba", "numpy")
 
 
@@ -23,39 +25,26 @@ def _probe_cupy() -> Backend | None:
     """Try to import CuPy and verify a CUDA device is available."""
     try:
         cupy = importlib.import_module("cupy")
-        device_count = cupy.cuda.runtime.getDeviceCount()
-        if device_count < 1:
+        if cupy.cuda.runtime.getDeviceCount() < 1:
             return None
-        # CuPy is usable as an array module; also check for numba JIT
-        has_jit = _has_numba()
+        has_jit = _probe_numba() is not None
         return Backend(name="cupy", xp=cupy, has_jit=has_jit, has_gpu=True)
     except Exception:  # noqa: BLE001 — broad catch is intentional for probing
         return None
-
-
-def _has_numba() -> bool:
-    """Return True if numba can be imported."""
-    try:
-        importlib.import_module("numba")
-        return True
-    except Exception:  # noqa: BLE001
-        return False
 
 
 def _probe_numba() -> Backend | None:
     """Try to import Numba (CPU JIT, no GPU)."""
     try:
         importlib.import_module("numba")
-        numpy = importlib.import_module("numpy")
-        return Backend(name="numba", xp=numpy, has_jit=True, has_gpu=False)
+        return Backend(name="numba", xp=np, has_jit=True, has_gpu=False)
     except Exception:  # noqa: BLE001
         return None
 
 
 def _make_numpy_backend() -> Backend:
     """Pure NumPy fallback — always available."""
-    numpy = importlib.import_module("numpy")
-    return Backend(name="numpy", xp=numpy, has_jit=False, has_gpu=False)
+    return Backend(name="numpy", xp=np, has_jit=False, has_gpu=False)
 
 
 def detect_backend() -> Backend:
@@ -81,20 +70,8 @@ def get_backend() -> Backend:
 def force_backend(name: str) -> Backend:
     """Override the cached backend.
 
-    Parameters
-    ----------
-    name:
-        One of ``"cupy"``, ``"numba"``, or ``"numpy"``.
-
-    Returns
-    -------
-    Backend
-        The newly-active backend.
-
-    Raises
-    ------
-    ValueError
-        If *name* is not a recognised backend.
+    *name* must be one of ``"cupy"``, ``"numba"``, or ``"numpy"``.
+    Raises ``ValueError`` if the name is unrecognised or the backend is unavailable.
     """
     global _backend  # noqa: PLW0603
 
@@ -105,9 +82,15 @@ def force_backend(name: str) -> Backend:
 
     if name == "numpy":
         _backend = _make_numpy_backend()
-    else:
-        probe = {"cupy": _probe_cupy, "numba": _probe_numba}[name]
-        result = probe()
+    elif name == "cupy":
+        result = _probe_cupy()
+        if result is None:
+            raise ValueError(
+                f"Backend {name!r} requested but is not available on this system"
+            )
+        _backend = result
+    elif name == "numba":
+        result = _probe_numba()
         if result is None:
             raise ValueError(
                 f"Backend {name!r} requested but is not available on this system"

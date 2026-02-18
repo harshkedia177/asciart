@@ -12,10 +12,19 @@ _SVG_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 </svg>"""
 
 
+def _flush_text_run(elements: list[str], chars: str, x_pos: int | float, y_pos: int | float, color: str | None) -> int | float:
+    """Emit a <text> element for a run of same-colored characters. Returns updated x_pos."""
+    if chars:
+        elements.append(
+            f'<text x="{x_pos}" y="{y_pos}" fill="{color}">'
+            f"{escape(chars)}</text>"
+        )
+        x_pos += len(chars) * CHAR_WIDTH
+    return x_pos
+
+
 def _render_svg_arrays(art: AsciiArt) -> str:
     """Fast path: read directly from arrays."""
-    svg_w = art.width * CHAR_WIDTH + 20
-    svg_h = art.height * CHAR_HEIGHT + 20
     char_array = art.char_array
     char_map = art.char_map or ""
     map_len = len(char_map)
@@ -35,22 +44,15 @@ def _render_svg_arrays(art: AsciiArt) -> str:
             else:
                 color = "#cccccc"
             if color != current_color:
-                if line_chars:
-                    text_elements.append(
-                        f'<text x="{x_pos}" y="{y_pos}" fill="{current_color}">'
-                        f"{escape(line_chars)}</text>"
-                    )
-                    x_pos += len(line_chars) * CHAR_WIDTH
+                x_pos = _flush_text_run(text_elements, line_chars, x_pos, y_pos, current_color)
                 line_chars = char
                 current_color = color
             else:
                 line_chars += char
-        if line_chars:
-            text_elements.append(
-                f'<text x="{x_pos}" y="{y_pos}" fill="{current_color}">'
-                f"{escape(line_chars)}</text>"
-            )
+        _flush_text_run(text_elements, line_chars, x_pos, y_pos, current_color)
     elements = "\n  ".join(text_elements)
+    svg_w = art.width * CHAR_WIDTH + 20
+    svg_h = art.height * CHAR_HEIGHT + 20
     return _SVG_TEMPLATE.format(svg_w=svg_w, svg_h=svg_h, elements=elements)
 
 
@@ -58,8 +60,6 @@ def render_svg(art: AsciiArt) -> str:
     if art.char_array is not None:
         return _render_svg_arrays(art)
     # Legacy fallback
-    svg_w = art.width * CHAR_WIDTH + 20
-    svg_h = art.height * CHAR_HEIGHT + 20
     text_elements = []
     for y, row in enumerate(art.cells):
         x_pos = 10
@@ -69,20 +69,13 @@ def render_svg(art: AsciiArt) -> str:
         for cell in row:
             color = f"rgb({cell.fg[0]},{cell.fg[1]},{cell.fg[2]})" if cell.fg else "#cccccc"
             if color != current_color:
-                if line_chars:
-                    text_elements.append(
-                        f'<text x="{x_pos}" y="{y_pos}" fill="{current_color}">'
-                        f"{escape(line_chars)}</text>"
-                    )
-                    x_pos += len(line_chars) * CHAR_WIDTH
+                x_pos = _flush_text_run(text_elements, line_chars, x_pos, y_pos, current_color)
                 line_chars = cell.char
                 current_color = color
             else:
                 line_chars += cell.char
-        if line_chars:
-            text_elements.append(
-                f'<text x="{x_pos}" y="{y_pos}" fill="{current_color}">'
-                f"{escape(line_chars)}</text>"
-            )
+        _flush_text_run(text_elements, line_chars, x_pos, y_pos, current_color)
     elements = "\n  ".join(text_elements)
+    svg_w = art.width * CHAR_WIDTH + 20
+    svg_h = art.height * CHAR_HEIGHT + 20
     return _SVG_TEMPLATE.format(svg_w=svg_w, svg_h=svg_h, elements=elements)

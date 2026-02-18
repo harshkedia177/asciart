@@ -85,14 +85,6 @@ def atkinson(image: np.ndarray, num_levels: int) -> np.ndarray:
     return _atkinson_python(image, num_levels)
 
 
-BAYER_4X4 = np.array([
-    [0, 8, 2, 10],
-    [12, 4, 14, 6],
-    [3, 11, 1, 9],
-    [15, 7, 13, 5],
-], dtype=np.float64) / 16.0
-
-
 def _generate_bayer(n: int) -> np.ndarray:
     """Recursively generate an n x n Bayer threshold matrix (n must be power of 2)."""
     if n == 1:
@@ -122,26 +114,20 @@ BLUE_NOISE_8X8 = np.array([
 ], dtype=np.float64) / 64.0
 
 
-def ordered_dither(image: np.ndarray, num_levels: int) -> np.ndarray:
+def _threshold_dither(image: np.ndarray, num_levels: int, matrix: np.ndarray) -> np.ndarray:
+    """Apply threshold-based dithering with a tiled matrix (Bayer, blue noise, etc.)."""
     h, w = image.shape
-    mh, mw = BAYER_8X8.shape
-    threshold = np.tile(BAYER_8X8, ((h + mh - 1) // mh, (w + mw - 1) // mw))[:h, :w]
+    mh, mw = matrix.shape
+    threshold = np.tile(matrix, ((h + mh - 1) // mh, (w + mw - 1) // mw))[:h, :w]
     normalized = image / 255.0
     biased = normalized + (threshold - 0.5) / num_levels
     quantized = np.round(biased * (num_levels - 1)).clip(0, num_levels - 1)
     return quantized / (num_levels - 1) * 255.0
+
+
+def ordered_dither(image: np.ndarray, num_levels: int) -> np.ndarray:
+    return _threshold_dither(image, num_levels, BAYER_8X8)
 
 
 def blue_noise_dither(image: np.ndarray, num_levels: int) -> np.ndarray:
-    """Blue noise dithering using a pre-computed 8x8 threshold texture.
-
-    Same algorithm as ordered_dither but with a blue noise threshold matrix
-    instead of a Bayer matrix, producing non-periodic, visually pleasing patterns.
-    """
-    h, w = image.shape
-    mh, mw = BLUE_NOISE_8X8.shape
-    threshold = np.tile(BLUE_NOISE_8X8, ((h + mh - 1) // mh, (w + mw - 1) // mw))[:h, :w]
-    normalized = image / 255.0
-    biased = normalized + (threshold - 0.5) / num_levels
-    quantized = np.round(biased * (num_levels - 1)).clip(0, num_levels - 1)
-    return quantized / (num_levels - 1) * 255.0
+    return _threshold_dither(image, num_levels, BLUE_NOISE_8X8)

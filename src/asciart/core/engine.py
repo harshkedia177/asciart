@@ -11,6 +11,13 @@ from asciart.core.ramps import BLOCKS
 from asciart.core.dither import floyd_steinberg, ordered_dither, atkinson, blue_noise_dither
 from asciart.core.edges import detect_edges
 
+_DITHER_DISPATCH = {
+    DitherMode.FLOYD_STEINBERG: floyd_steinberg,
+    DitherMode.ORDERED: ordered_dither,
+    DitherMode.ATKINSON: atkinson,
+    DitherMode.BLUE_NOISE: blue_noise_dither,
+}
+
 
 def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
     """Main conversion pipeline: Image + Options -> AsciiArt grid."""
@@ -130,14 +137,9 @@ def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
 
             return AsciiArt.from_arrays(char_indices, char_map, fg_array=fg)
 
-        if options.dither == DitherMode.FLOYD_STEINBERG:
-            gray = floyd_steinberg(gray, len(chars))
-        elif options.dither == DitherMode.ORDERED:
-            gray = ordered_dither(gray, len(chars))
-        elif options.dither == DitherMode.ATKINSON:
-            gray = atkinson(gray, len(chars))
-        elif options.dither == DitherMode.BLUE_NOISE:
-            gray = blue_noise_dither(gray, len(chars))
+        dither_fn = _DITHER_DISPATCH.get(options.dither)
+        if dither_fn is not None:
+            gray = dither_fn(gray, len(chars))
 
         char_indices, char_map, fg = map_brightness(gray, chars, options.invert, colors)
 
