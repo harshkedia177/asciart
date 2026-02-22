@@ -64,6 +64,16 @@ class GlyphMatcher:
                 )
             )
 
+        # Adaptive hybrid weights: only adjust for very short ramps (< 8 chars)
+        # Short ramps need brightness-dominated matching for tonal separation
+        # 8+ chars: original tuned weights unchanged
+        n = len(chars)
+        t = np.clip((n - 4) / 4.0, 0.0, 1.0)  # 0 at n<=4, 1 at n>=8
+        self.w_brightness = 0.70 * (1.0 - t) + 0.25 * t
+        self.w_structure = 0.20 * (1.0 - t) + 0.50 * t
+        self.w_variance = 0.05 * (1.0 - t) + 0.15 * t
+        self.w_frequency = 0.05 * (1.0 - t) + 0.10 * t
+
         # Pre-compute matrices for batch operations
         self.brightness_array = np.array(
             [g.mean_brightness for g in self.glyphs], dtype=np.float64
@@ -203,10 +213,10 @@ class GlyphMatcher:
             frequency_diff = np.abs(self.frequency_array - tile_freqs)
 
         return (
-            0.25 * norm(brightness_diff)
-            + 0.50 * norm(ssd)
-            + 0.15 * norm(variance_diff)
-            + 0.10 * norm(frequency_diff)
+            self.w_brightness * norm(brightness_diff)
+            + self.w_structure * norm(ssd)
+            + self.w_variance * norm(variance_diff)
+            + self.w_frequency * norm(frequency_diff)
         )
 
     def match_tiles_batch(
