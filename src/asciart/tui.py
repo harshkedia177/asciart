@@ -296,8 +296,6 @@ class AsciiArtApp(App):
     def _apply_preset(self, preset: ConvertOptions) -> None:
         """Snap all sliders/selects to preset values."""
         self.query_one("#mode-select", Select).value = preset.mode.value
-        # Resolve preset chars to a ramp name if possible, else default to standard
-        from asciart.core.ramps import RAMPS
         ramp_name = next((k for k, v in RAMPS.items() if v == preset.chars), "standard")
         self.query_one("#chars-select", Select).value = ramp_name
         self.query_one("#width-slider", Slider).value = preset.width

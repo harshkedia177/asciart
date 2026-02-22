@@ -19,7 +19,6 @@ NUMBERS = " .17320456989"
 # Mixed letters + digits — sorted by visual density
 ALPHANUMERIC = " .1ico3a5mnw8MW#B@"
 
-# Named ramp registry
 RAMPS: dict[str, str] = {
     "standard": STANDARD,
     "detailed": DETAILED,

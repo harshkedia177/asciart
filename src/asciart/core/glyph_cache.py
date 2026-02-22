@@ -64,11 +64,8 @@ class GlyphMatcher:
                 )
             )
 
-        # Adaptive hybrid weights: only adjust for very short ramps (< 8 chars)
-        # Short ramps need brightness-dominated matching for tonal separation
-        # 8+ chars: original tuned weights unchanged
-        n = len(chars)
-        t = np.clip((n - 4) / 4.0, 0.0, 1.0)  # 0 at n<=4, 1 at n>=8
+        # Adaptive hybrid weights: lerp from brightness-heavy (n<=4) to original (n>=8)
+        t = np.clip((len(chars) - 4) / 4.0, 0.0, 1.0)
         self.w_brightness = 0.70 * (1.0 - t) + 0.25 * t
         self.w_structure = 0.20 * (1.0 - t) + 0.50 * t
         self.w_variance = 0.05 * (1.0 - t) + 0.15 * t
