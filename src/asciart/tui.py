@@ -296,8 +296,9 @@ class AsciiArtApp(App):
     def _apply_preset(self, preset: ConvertOptions) -> None:
         """Snap all sliders/selects to preset values."""
         self.query_one("#mode-select", Select).value = preset.mode.value
-        ramp_name = next((k for k, v in RAMPS.items() if v == preset.chars), "standard")
-        self.query_one("#chars-select", Select).value = ramp_name
+        ramp_name = next((k for k, v in RAMPS.items() if v == preset.chars), None)
+        if ramp_name is not None:
+            self.query_one("#chars-select", Select).value = ramp_name
         self.query_one("#width-slider", Slider).value = preset.width
         self.query_one("#brightness-slider", Slider).value = int(preset.brightness)
         self.query_one("#contrast-slider", Slider).value = int(preset.contrast * 100)

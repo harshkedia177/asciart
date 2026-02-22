@@ -73,6 +73,16 @@ def test_hybrid_mode_works(matcher):
     assert result.dtype == np.uint8
 
 
+def test_adaptive_weights_short_ramp():
+    short = GlyphMatcher(" .#@", cell_w=6, cell_h=10)
+    assert short.w_brightness == pytest.approx(0.70)
+    assert short.w_structure == pytest.approx(0.20)
+
+    standard = GlyphMatcher(CHARS, cell_w=6, cell_h=10)
+    assert standard.w_brightness == pytest.approx(0.25)
+    assert standard.w_structure == pytest.approx(0.50)
+
+
 def test_brightness_mode_works(matcher):
     """Brightness-only matching works correctly."""
     # Create a black tile (all zeros) -> should match darkest glyph

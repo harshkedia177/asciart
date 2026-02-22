@@ -31,7 +31,18 @@ A high-performance image-to-ASCII art converter with GPU acceleration, perceptua
 |------|----------|-------|---------|
 | `brightness` | Map pixel brightness to character ramp | Fastest | Good |
 | `structural` | Match image tiles against pre-rendered glyph bitmaps (SSD) | Moderate | Better |
-| `hybrid` | Multi-criteria: 25% brightness + 50% structure + 15% variance + 10% frequency | Slower | Best |
+| `hybrid` | Multi-criteria with adaptive weights (auto-adjusts for short ramps) | Slower | Best |
+
+**6 named character ramps** (or bring your own):
+
+| Ramp | Characters | Vibe |
+|------|-----------|------|
+| `standard` | `" .:-=+*#%@"` | Default, general purpose |
+| `detailed` | 70-char Paul Bourke ramp | Maximum tonal granularity |
+| `minimal` | `" .:#"` | Retro, low-res |
+| `alphabets` | `" .:ciloeCOGMWB@"` | Letters only |
+| `numbers` | `" .1732045698"` | Digits only |
+| `alphanumeric` | `" .1ico3a5mnw8MW#B@"` | Mixed letters + digits |
 
 **5 dithering algorithms:** none, Floyd-Steinberg, ordered (8x8 Bayer), Atkinson, blue noise
 
@@ -75,6 +86,13 @@ asciart convert photo.jpg
 # High-quality with structural matching and CLAHE
 asciart convert photo.jpg --match hybrid --clahe --dither atkinson
 
+# Use a named character ramp
+asciart convert photo.jpg --chars alphabets
+asciart convert photo.jpg --chars numbers
+
+# Custom character string
+asciart convert photo.jpg --chars " .oO@#"
+
 # Braille mode for maximum detail
 asciart convert photo.jpg --mode braille -w 200 --color truecolor
 
@@ -109,6 +127,7 @@ asciart convert [OPTIONS] IMAGE_PATH
 |------|---------|-------------|
 | `-w, --width` | `80` | Output width in characters |
 | `--mode` | `ascii` | Rendering mode: `ascii`, `blocks`, `braille`, `halfblock` |
+| `--chars` | `standard` | Character ramp name or custom string |
 | `--color` | `auto` | Color: `none`, `256`, `truecolor`, `auto` |
 | `--match` | `brightness` | Matching: `brightness`, `structural`, `hybrid` |
 | `--dither` | `none` | Dithering: `none`, `floyd-steinberg`, `ordered`, `atkinson`, `blue-noise` |
@@ -175,7 +194,7 @@ asciart play
 The TUI provides:
 - Live preview with debounced updates
 - Sliders for width, brightness, contrast, saturation, sharpness, font ratio
-- Dropdowns for mode, color, dither, match mode
+- Dropdowns for mode, character ramp, color, dither, match mode
 - Toggles for CLAHE, edge detection, invert
 - One-click presets
 - Export to TXT, HTML, PNG
@@ -218,7 +237,7 @@ sRGB → Linear RGB → XYZ (D65) → L*a*b* → CIE76 Delta E → nearest ANSI-
 
 ### Glyph matching
 
-Structural and hybrid matching pre-render every ASCII character to a bitmap, extract 4x4 sub-block feature vectors, and match image tiles against glyphs using sum-of-squared-differences (SSD). Hybrid mode combines brightness, structural similarity, variance, and spatial frequency with learned weights.
+Structural and hybrid matching pre-render every ASCII character to a bitmap, extract 4x4 sub-block feature vectors, and match image tiles against glyphs using sum-of-squared-differences (SSD). Hybrid mode combines brightness, structural similarity, variance, and spatial frequency with adaptive weights that auto-adjust based on ramp length — short ramps favor brightness for tonal separation, long ramps favor structural matching.
 
 ## Project Structure
 
@@ -238,7 +257,7 @@ src/asciart/
 │   ├── contrast.py        # CLAHE implementation
 │   ├── color_space.py     # CIELAB perceptual color
 │   ├── glyph_cache.py     # Structural glyph matching
-│   ├── ramps.py           # Character ramp definitions
+│   ├── ramps.py           # Named character ramps + resolver
 │   └── gif.py             # GIF frame extraction
 ├── renderers/
 │   ├── terminal.py        # ANSI escape sequences
@@ -259,7 +278,7 @@ git clone https://github.com/harshkedia177/asciart.git
 cd asciart
 uv sync --group dev
 
-# Run tests (160+ tests)
+# Run tests (167+ tests)
 uv run pytest
 
 # Run with coverage

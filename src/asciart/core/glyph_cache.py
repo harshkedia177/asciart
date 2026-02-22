@@ -182,7 +182,10 @@ class GlyphMatcher:
         tile_variances: float | np.ndarray,
         tile_freqs: float | np.ndarray,
     ) -> np.ndarray:
-        """Compute weighted hybrid similarity scores.
+        """Compute weighted hybrid similarity scores using adaptive weights.
+
+        Weights are set in __init__ based on ramp length: short ramps favor
+        brightness, long ramps favor structural matching.
 
         Works for both single tiles (scalars) and batches (arrays with newaxis).
         Returns shape (N_glyphs,) for single tile or (n_tiles, N_glyphs) for batch.

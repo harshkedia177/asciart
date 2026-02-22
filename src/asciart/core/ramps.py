@@ -14,7 +14,7 @@ BLOCKS = " ░▒▓█"
 ALPHABETS = " .:ciloeCOGMWB@"
 
 # Digits only — sorted by visual density
-NUMBERS = " .17320456989"
+NUMBERS = " .1732045698"
 
 # Mixed letters + digits — sorted by visual density
 ALPHANUMERIC = " .1ico3a5mnw8MW#B@"
@@ -23,7 +23,6 @@ RAMPS: dict[str, str] = {
     "standard": STANDARD,
     "detailed": DETAILED,
     "minimal": MINIMAL,
-    "blocks": BLOCKS,
     "alphabets": ALPHABETS,
     "numbers": NUMBERS,
     "alphanumeric": ALPHANUMERIC,

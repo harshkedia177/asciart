@@ -23,3 +23,8 @@ def test_all_ramps_start_with_space():
 def test_all_ramps_have_at_least_3_chars():
     for name, ramp in RAMPS.items():
         assert len(ramp) >= 3, f"Ramp '{name}' too short: {len(ramp)}"
+
+
+def test_all_ramps_have_unique_chars():
+    for name, ramp in RAMPS.items():
+        assert len(ramp) == len(set(ramp)), f"Ramp '{name}' has duplicate characters"

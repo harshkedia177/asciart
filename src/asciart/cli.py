@@ -68,7 +68,7 @@ def convert_cmd(
         if base is None:
             typer.echo(f"Unknown preset '{preset}'. Available: photo, logo, retro, hd, blocks, lineart, studio", err=True)
             raise typer.Exit(code=1)
-        options = replace(base, width=width, font_ratio=font_ratio)
+        options = replace(base, width=width, chars=chars, font_ratio=font_ratio)
         if invert:
             options = replace(options, invert=True)
     else:
