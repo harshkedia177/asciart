@@ -7,7 +7,7 @@ from asciart.accel import get_backend
 from asciart.models import AsciiArt, ConvertOptions, ColorMode, DitherMode, MatchMode, Mode
 from asciart.core.preprocess import preprocess, resize_with_edge_preservation, to_grayscale
 from asciart.core.mapper import map_brightness, map_braille, map_halfblock
-from asciart.core.ramps import BLOCKS
+from asciart.core.ramps import BLOCKS, resolve_chars
 from asciart.core.dither import floyd_steinberg, ordered_dither, atkinson, blue_noise_dither
 from asciart.core.edges import detect_edges
 
@@ -95,7 +95,7 @@ def convert(image: Image.Image, options: ConvertOptions) -> AsciiArt:
         if options.mode == Mode.BLOCKS:
             chars = BLOCKS
         else:
-            chars = options.chars
+            chars = resolve_chars(options.chars)
 
         # Structural / hybrid glyph matching path
         if options.match_mode != MatchMode.BRIGHTNESS:

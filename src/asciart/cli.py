@@ -28,6 +28,10 @@ def convert_cmd(
     mode: Mode = typer.Option(Mode.ASCII, "--mode", help="Rendering mode"),
     color: ColorMode = typer.Option(ColorMode.AUTO, "--color", help="Color mode"),
     dither: DitherMode = typer.Option(DitherMode.NONE, "--dither", help="Dithering algorithm"),
+    chars: str = typer.Option(
+        "standard", "--chars",
+        help="Character ramp: standard, detailed, minimal, alphabets, numbers, alphanumeric, or a custom string",
+    ),
     invert: bool = typer.Option(False, "-i", "--invert", help="Invert brightness"),
     brightness: float = typer.Option(0.0, "--brightness", help="Brightness offset (-100 to 100)"),
     contrast: float = typer.Option(1.0, "--contrast", help="Contrast multiplier"),
@@ -71,6 +75,7 @@ def convert_cmd(
         options = ConvertOptions(
             width=width,
             mode=mode,
+            chars=chars,
             color=color,
             dither=dither,
             invert=invert,
