@@ -192,7 +192,7 @@ class ConvertOptions:
     width: int = 80
     height: int | None = None
     mode: Mode = Mode.ASCII
-    chars: str = " .:-=+*#%@"
+    chars: str = "standard"
     color: ColorMode = ColorMode.AUTO
     dither: DitherMode = DitherMode.NONE
     invert: bool = False

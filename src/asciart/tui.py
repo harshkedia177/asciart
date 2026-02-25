@@ -16,6 +16,7 @@ from textual_slider import Slider
 
 from asciart.core.engine import convert
 from asciart.models import ColorMode, ConvertOptions, DitherMode, MatchMode, Mode
+from asciart.core.ramps import RAMPS
 from asciart.presets import PRESETS
 from asciart.renderers.text import render_text
 from asciart.renderers.html import render_html
@@ -123,6 +124,14 @@ class AsciiArtApp(App):
                     id="mode-select",
                 )
 
+                # Character Ramp
+                yield Label("Chars", classes="section-label")
+                yield Select(
+                    [(name, name) for name in RAMPS],
+                    value="standard",
+                    id="chars-select",
+                )
+
                 # Dimensions
                 yield Label("Width", classes="section-label")
                 yield Slider(min=20, max=300, value=80, step=5, id="width-slider")
@@ -219,6 +228,7 @@ class AsciiArtApp(App):
         return ConvertOptions(
             width=self.query_one("#width-slider", Slider).value,
             mode=Mode(self.query_one("#mode-select", Select).value),
+            chars=str(self.query_one("#chars-select", Select).value),
             color=ColorMode(self.query_one("#color-select", Select).value),
             dither=DitherMode(self.query_one("#dither-select", Select).value),
             invert=self.query_one("#invert-switch", Switch).value,
@@ -286,6 +296,9 @@ class AsciiArtApp(App):
     def _apply_preset(self, preset: ConvertOptions) -> None:
         """Snap all sliders/selects to preset values."""
         self.query_one("#mode-select", Select).value = preset.mode.value
+        ramp_name = next((k for k, v in RAMPS.items() if v == preset.chars), None)
+        if ramp_name is not None:
+            self.query_one("#chars-select", Select).value = ramp_name
         self.query_one("#width-slider", Slider).value = preset.width
         self.query_one("#brightness-slider", Slider).value = int(preset.brightness)
         self.query_one("#contrast-slider", Slider).value = int(preset.contrast * 100)

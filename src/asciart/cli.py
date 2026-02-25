@@ -28,6 +28,10 @@ def convert_cmd(
     mode: Mode = typer.Option(Mode.ASCII, "--mode", help="Rendering mode"),
     color: ColorMode = typer.Option(ColorMode.AUTO, "--color", help="Color mode"),
     dither: DitherMode = typer.Option(DitherMode.NONE, "--dither", help="Dithering algorithm"),
+    chars: str = typer.Option(
+        "standard", "--chars",
+        help="Character ramp: standard, detailed, minimal, alphabets, numbers, alphanumeric, or a custom string",
+    ),
     invert: bool = typer.Option(False, "-i", "--invert", help="Invert brightness"),
     brightness: float = typer.Option(0.0, "--brightness", help="Brightness offset (-100 to 100)"),
     contrast: float = typer.Option(1.0, "--contrast", help="Contrast multiplier"),
@@ -64,13 +68,14 @@ def convert_cmd(
         if base is None:
             typer.echo(f"Unknown preset '{preset}'. Available: photo, logo, retro, hd, blocks, lineart, studio", err=True)
             raise typer.Exit(code=1)
-        options = replace(base, width=width, font_ratio=font_ratio)
+        options = replace(base, width=width, chars=chars, font_ratio=font_ratio)
         if invert:
             options = replace(options, invert=True)
     else:
         options = ConvertOptions(
             width=width,
             mode=mode,
+            chars=chars,
             color=color,
             dither=dither,
             invert=invert,
