@@ -8,14 +8,7 @@ import numpy as np
 
 
 class ThreadedFrameGrabber:
-    """Reads video frames in a background thread with a bounded queue.
-
-    Drops old frames when the consumer can't keep up.
-
-    Args:
-        source: File path (str) or camera index (int).
-        queue_size: Max frames to buffer. Default 2.
-    """
+    """Background-threaded video frame reader with bounded queue."""
 
     def __init__(self, source: str | int, queue_size: int = 2) -> None:
         self._source = source

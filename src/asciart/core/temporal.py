@@ -4,11 +4,7 @@ import numpy as np
 
 
 class TemporalSmoother:
-    """Reduces frame-to-frame flickering via exponential moving average.
-
-    Args:
-        alpha: Blend strength. 1.0 = no smoothing, 0.0 = freeze on first frame. Default 0.3.
-    """
+    """Exponential moving average over frames to reduce flickering."""
 
     def __init__(self, alpha: float = 0.3) -> None:
         self._alpha = alpha

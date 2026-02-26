@@ -17,17 +17,7 @@ from asciart.renderers.text import render_text
 
 
 class VideoProcessor:
-    """Orchestrates video → ASCII conversion.
-
-    Ties together ThreadedFrameGrabber, TemporalSmoother, engine.convert(),
-    and the renderers for terminal playback and file export.
-
-    Args:
-        source: File path (str) or camera index (int).
-        options: Conversion settings.
-        target_fps: Desired playback frame rate.
-        temporal_smoothing: EMA alpha for inter-frame smoothing (1.0 = no smoothing).
-    """
+    """Video → ASCII conversion with terminal playback and file export."""
 
     def __init__(
         self,
@@ -55,7 +45,6 @@ class VideoProcessor:
         return self._grabber.is_webcam
 
     def iter_frames(self) -> Iterator[AsciiArt]:
-        """Yield converted AsciiArt for every frame in the source."""
         cap = cv2.VideoCapture(self._source)
         try:
             while True:
@@ -67,7 +56,6 @@ class VideoProcessor:
             cap.release()
 
     def _process_frame(self, bgr_frame: np.ndarray) -> AsciiArt:
-        """Convert a single BGR frame to AsciiArt via temporal smoothing + engine."""
         rgb_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
         float_frame = rgb_frame.astype(np.float64)
         smoothed = self._smoother.smooth(float_frame)
@@ -75,7 +63,6 @@ class VideoProcessor:
         return convert(pil_image, self._options)
 
     def play_terminal(self) -> None:
-        """Play the video as live ASCII art in the terminal."""
         self._grabber.start()
         use_256 = self._options.color == ColorMode.ANSI256
         use_color = self._options.color != ColorMode.NONE
@@ -98,18 +85,8 @@ class VideoProcessor:
                 process_time = time.monotonic() - frame_start
                 actual_fps = 1.0 / process_time if process_time > 0 else 0
                 total = self.frame_count
-                if total > 0:
-                    status = (
-                        f" Frame {frame_num}/{total}"
-                        f" | {actual_fps:.1f} FPS"
-                        f" | {process_time * 1000:.0f}ms "
-                    )
-                else:
-                    status = (
-                        f" Frame {frame_num}"
-                        f" | {actual_fps:.1f} FPS"
-                        f" | {process_time * 1000:.0f}ms "
-                    )
+                progress = f"{frame_num}/{total}" if total > 0 else str(frame_num)
+                status = f" Frame {progress} | {actual_fps:.1f} FPS | {process_time * 1000:.0f}ms "
                 sys.stdout.write("\033[H")
                 sys.stdout.write(rendered)
                 sys.stdout.write(f"\n\033[7m{status}\033[0m")
@@ -126,7 +103,6 @@ class VideoProcessor:
             sys.stdout.write("\033[0m\n")
 
     def export_gif(self, output_path: str, fps: float | None = None) -> None:
-        """Export all frames as an animated GIF."""
         from asciart.renderers.video_export import export_to_gif
 
         target_fps = fps or self._target_fps
@@ -134,7 +110,6 @@ class VideoProcessor:
         export_to_gif(frames, output_path, target_fps)
 
     def export_mp4(self, output_path: str, fps: float | None = None) -> None:
-        """Export all frames as an MP4 video."""
         from asciart.renderers.video_export import export_to_mp4
 
         target_fps = fps or self._target_fps

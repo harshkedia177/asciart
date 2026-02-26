@@ -11,8 +11,6 @@ from asciart.core.frame_grabber import ThreadedFrameGrabber
 
 
 class FakeCapture:
-    """Simulates cv2.VideoCapture for testing."""
-
     def __init__(self, frames: list[np.ndarray], fps: float = 30.0):
         self._frames = frames
         self._index = 0
