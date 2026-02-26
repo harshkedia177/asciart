@@ -162,5 +162,181 @@ def play(
     tui.run()
 
 
+@app.command()
+def video(
+    video_path: Path = typer.Argument(..., help="Path to the video file", exists=True),
+    width: int = typer.Option(80, "-w", "--width", help="Output width in characters"),
+    mode: Mode = typer.Option(Mode.ASCII, "--mode", help="Rendering mode"),
+    color: ColorMode = typer.Option(ColorMode.AUTO, "--color", help="Color mode"),
+    dither: DitherMode = typer.Option(DitherMode.NONE, "--dither", help="Dithering algorithm"),
+    chars: str = typer.Option(
+        "standard", "--chars",
+        help="Character ramp: standard, detailed, minimal, alphabets, numbers, alphanumeric, or a custom string",
+    ),
+    invert: bool = typer.Option(False, "-i", "--invert", help="Invert brightness"),
+    brightness: float = typer.Option(0.0, "--brightness", help="Brightness offset (-100 to 100)"),
+    contrast: float = typer.Option(1.0, "--contrast", help="Contrast multiplier"),
+    saturation: float = typer.Option(1.0, "--saturation", help="Saturation multiplier"),
+    sharpness: float = typer.Option(1.0, "--sharpness", help="Sharpness multiplier"),
+    font_ratio: float = typer.Option(0.5, "--ratio", help="Font cell width/height ratio"),
+    preset: Optional[str] = typer.Option(None, "--preset", help="Use a preset"),
+    match: MatchMode = typer.Option(MatchMode.BRIGHTNESS, "--match", help="Character matching mode"),
+    font_path: Optional[str] = typer.Option(None, "--font", help="Font path for structural/hybrid matching"),
+    clahe: bool = typer.Option(False, "--clahe", help="Enable CLAHE local contrast enhancement"),
+    backend_name: Optional[str] = typer.Option(None, "--backend", help="Force backend: numpy, numba, cupy"),
+    fps: Optional[float] = typer.Option(None, "--fps", help="Playback FPS (default: use source FPS)"),
+    temporal_smoothing: float = typer.Option(0.3, "--temporal-smoothing", help="Temporal smoothing alpha (1.0 = no smoothing)"),
+    output: Optional[Path] = typer.Option(None, "-o", "--output", help="Export to MP4 or GIF file"),
+    output_fps: Optional[float] = typer.Option(None, "--output-fps", help="Output file FPS (default: same as playback)"),
+):
+    """Play a video file as ASCII art, or export to MP4/GIF."""
+    try:
+        import cv2  # noqa: F401
+    except ImportError:
+        typer.echo("OpenCV is required for video processing. Install with: pip install opencv-python", err=True)
+        raise typer.Exit(code=1)
+
+    if backend_name:
+        from asciart.accel import force_backend
+        try:
+            force_backend(backend_name)
+        except ValueError as e:
+            typer.echo(str(e), err=True)
+            raise typer.Exit(code=1)
+
+    if preset:
+        base = get_preset(preset)
+        if base is None:
+            typer.echo(f"Unknown preset '{preset}'. Available: photo, logo, retro, hd, blocks, lineart, studio", err=True)
+            raise typer.Exit(code=1)
+        options = replace(base, width=width, chars=chars, font_ratio=font_ratio)
+        if invert:
+            options = replace(options, invert=True)
+    else:
+        options = ConvertOptions(
+            width=width,
+            mode=mode,
+            chars=chars,
+            color=color,
+            dither=dither,
+            invert=invert,
+            brightness=brightness,
+            contrast=contrast,
+            saturation=saturation,
+            sharpness=sharpness,
+            font_ratio=font_ratio,
+            match_mode=match,
+            font_path=font_path,
+            clahe=clahe,
+        )
+
+    from asciart.core.video import VideoProcessor
+
+    # Resolve FPS from source if not specified
+    cap = cv2.VideoCapture(str(video_path))
+    source_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    cap.release()
+    target_fps = fps if fps is not None else source_fps
+
+    processor = VideoProcessor(
+        source=str(video_path),
+        options=options,
+        target_fps=target_fps,
+        temporal_smoothing=temporal_smoothing,
+    )
+
+    if output:
+        ext = output.suffix.lower()
+        if ext == ".gif":
+            typer.echo(f"Exporting GIF to {output}...", err=True)
+            processor.export_gif(str(output), fps=output_fps)
+        elif ext == ".mp4":
+            typer.echo(f"Exporting MP4 to {output}...", err=True)
+            processor.export_mp4(str(output), fps=output_fps)
+        else:
+            typer.echo(f"Unsupported output format '{ext}'. Use .gif or .mp4.", err=True)
+            raise typer.Exit(code=1)
+        typer.echo(f"Saved to {output}")
+    else:
+        processor.play_terminal()
+
+
+@app.command()
+def webcam(
+    width: int = typer.Option(80, "-w", "--width", help="Output width in characters"),
+    mode: Mode = typer.Option(Mode.ASCII, "--mode", help="Rendering mode"),
+    color: ColorMode = typer.Option(ColorMode.AUTO, "--color", help="Color mode"),
+    dither: DitherMode = typer.Option(DitherMode.NONE, "--dither", help="Dithering algorithm"),
+    chars: str = typer.Option(
+        "standard", "--chars",
+        help="Character ramp: standard, detailed, minimal, alphabets, numbers, alphanumeric, or a custom string",
+    ),
+    invert: bool = typer.Option(False, "-i", "--invert", help="Invert brightness"),
+    brightness: float = typer.Option(0.0, "--brightness", help="Brightness offset (-100 to 100)"),
+    contrast: float = typer.Option(1.0, "--contrast", help="Contrast multiplier"),
+    saturation: float = typer.Option(1.0, "--saturation", help="Saturation multiplier"),
+    sharpness: float = typer.Option(1.0, "--sharpness", help="Sharpness multiplier"),
+    font_ratio: float = typer.Option(0.5, "--ratio", help="Font cell width/height ratio"),
+    preset: Optional[str] = typer.Option(None, "--preset", help="Use a preset"),
+    match: MatchMode = typer.Option(MatchMode.BRIGHTNESS, "--match", help="Character matching mode"),
+    font_path: Optional[str] = typer.Option(None, "--font", help="Font path for structural/hybrid matching"),
+    clahe: bool = typer.Option(False, "--clahe", help="Enable CLAHE local contrast enhancement"),
+    backend_name: Optional[str] = typer.Option(None, "--backend", help="Force backend: numpy, numba, cupy"),
+    fps: float = typer.Option(24.0, "--fps", help="Target playback FPS"),
+    temporal_smoothing: float = typer.Option(0.3, "--temporal-smoothing", help="Temporal smoothing alpha (1.0 = no smoothing)"),
+    camera: int = typer.Option(0, "--camera", help="Camera device index"),
+):
+    """Live webcam feed as ASCII art."""
+    try:
+        import cv2  # noqa: F401
+    except ImportError:
+        typer.echo("OpenCV is required for webcam capture. Install with: pip install opencv-python", err=True)
+        raise typer.Exit(code=1)
+
+    if backend_name:
+        from asciart.accel import force_backend
+        try:
+            force_backend(backend_name)
+        except ValueError as e:
+            typer.echo(str(e), err=True)
+            raise typer.Exit(code=1)
+
+    if preset:
+        base = get_preset(preset)
+        if base is None:
+            typer.echo(f"Unknown preset '{preset}'. Available: photo, logo, retro, hd, blocks, lineart, studio", err=True)
+            raise typer.Exit(code=1)
+        options = replace(base, width=width, chars=chars, font_ratio=font_ratio)
+        if invert:
+            options = replace(options, invert=True)
+    else:
+        options = ConvertOptions(
+            width=width,
+            mode=mode,
+            chars=chars,
+            color=color,
+            dither=dither,
+            invert=invert,
+            brightness=brightness,
+            contrast=contrast,
+            saturation=saturation,
+            sharpness=sharpness,
+            font_ratio=font_ratio,
+            match_mode=match,
+            font_path=font_path,
+            clahe=clahe,
+        )
+
+    from asciart.core.video import VideoProcessor
+
+    processor = VideoProcessor(
+        source=camera,
+        options=options,
+        target_fps=fps,
+        temporal_smoothing=temporal_smoothing,
+    )
+    processor.play_terminal()
+
+
 if __name__ == "__main__":
     app()
